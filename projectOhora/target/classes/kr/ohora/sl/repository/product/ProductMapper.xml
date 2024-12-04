@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.ohora.sl.repository.product.ProductMapper">
+	<!-- 상품 기준에 따른 SQL 쿼리 처리 -->
+	<sql id="prdCondition">
+		<where>
+			<if test="categoryNumber != null">
+				<choose>
+					<when test="categoryNumber == 121">
+	                 	<![CDATA[
+	                    pdtadddate >= SYSDATE - INTERVAL '30' DAY
+	                    ]]>
+					</when>
+					<when test="categoryNumber == 120">
+						pdtsalescount >= 300
+					</when>
+					<when test="categoryNumber == 44">
+						1 = 1
+					</when>
+					<when test="categoryNumber == 671">
+						pdtdiscountrate >= 30
+					</when>
+					<when test="categoryNumber == 160">
+						catid = 1
+					</when>
+					<when test="categoryNumber == 161">
+						catid = 2
+					</when>
+					<when test="categoryNumber == 49">
+						catid = 3
+					</when>
+					<when test="categoryNumber == 436">
+						catid = 1 AND scatid = 2
+					</when>
+					<when test="categoryNumber == 435">
+						catid = 1 AND scatid = 1
+					</when>
+					<when test="categoryNumber == 432">
+						pdtsalescount >= 300 AND scatid = 2
+					</when>
+					<when test="categoryNumber == 431">
+						pdtsalescount >= 300 AND scatid = 1
+					</when>
+					<when test="categoryNumber == 125">
+						pdtsalescount >= 300 AND catid = 1
+					</when>
+					<when test="categoryNumber == 127">
+						pdtsalescount >= 300 AND catid = 2
+					</when>
+					<when test="categoryNumber == 540">
+						pdtsalescount >= 300 AND catid = 3
+					</when>
+					<when test="categoryNumber == 238">
+						pdtdiscountrate >= 50
+					</when>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<!-- 상품 정렬하는 SQL 쿼리 처리 -->
+	<sql id="prdSortCondition">
+			<if test="sortMethod == null">
+				ORDER BY pdtid ASC
+			</if>
+			<if test="sortMethod != null">
+				<choose>
+					<when test="sortMethod == 5">
+                     	ORDER BY pdtadddate DESC
+					</when>
+					<when test="sortMethod == 6">
+                     	ORDER BY pdtsalescount DESC
+					</when>
+					<when test="sortMethod == 8">
+                     	ORDER BY pdtviewcount DESC
+					</when>
+				</choose>
+			</if>
+	</sql>
+	<!-- public ArrayList<ProductDTO> selectProductsByCateNo( Criteria criteria 
+		); // cate_no 에 따른 상품 ( new , best , all , outlet ) -->
+	<select id="selectProductsByCateNo"
+		resultType="kr.ohora.sl.domain.ProductDTO">
+		SELECT *
+		FROM (
+		SELECT
+		rownum AS rn,
+		pdtid,
+		catid,
+		scatid,
+		pdtnumber,
+		pdtname,
+		pdtamount,
+		pdtdiscountrate,
+		pdtimgurl,
+		pdtcount,
+		pdtreviewcount,
+		pdtsalescount,
+		pdtadddate,
+		pdtviewcount,
+		CASE
+		WHEN pdtdiscountrate != 0 THEN pdtamount - CAST(pdtamount *
+		pdtdiscountrate / 100 AS INT)
+		ELSE pdtamount
+		END AS pdtdiscountamount
+		FROM (
+		SELECT *
+		FROM OPRODUCT
+		<include refid="prdCondition" />
+		<include refid="prdSortCondition" />
+	            <![CDATA[
+	        ) a
+	        WHERE rownum <= #{currentPage} * #{numberPerPage}
+	    ) b
+	    WHERE rn > (#{currentPage} - 1) * #{numberPerPage}
+	    ]]>
+	</select>
+
+	<!-- public Integer selectTotalRecords( Criteria criteria ); -->
+	<select id="selectTotalRecords" resultType="Integer">
+		SELECT COUNT(*) FROM OPRODUCT
+		<include refid="prdCondition" />
+	</select>
+
+
+	<!-- public void productViewUpdate(); // 상품 클릭시 조회수 +1 -->
+	<update id="productViewUpdate">
+		UPDATE OPRODUCT
+		SET pdtviewcount = pdtviewcount + 1
+		WHERE pdtid = #{pdtid}
+	</update>
+
+	<!-- public ProductDTO selectProductDetail(Criteria criteria); -->
+	<select id="selectProductDetail" resultType="kr.ohora.sl.domain.ProductDTO">
+		SELECT pdtid,
+		catid,
+		scatid,
+		pdtnumber,
+		pdtname,
+		pdtamount,
+		pdtdiscountrate,
+		pdtimgurl,
+		pdtcount,
+		pdtreviewcount,
+		pdtsalescount,
+		pdtadddate,
+		pdtviewcount,
+		CASE
+		WHEN pdtdiscountrate != 0 THEN pdtamount - CAST(pdtamount *
+		pdtdiscountrate / 100 AS INT)
+		ELSE pdtamount
+		END AS pdtdiscountamount
+		FROM OPRODUCT
+		WHERE pdtid = #{pdtid}
+	</select>
+
+	<!-- public ArrayList<ProductOptionDTO> selectProductOptionCmb(Criteria 
+		criteria); -->
+	<select id="selectProductOptionCmb"
+		resultType="kr.ohora.sl.domain.ProductDTO">
+		SELECT o.optName
+		FROM oProduct p
+		JOIN oPdtoption o ON p.pdtid = o.pdtid
+		WHERE p.scatid IS NOT NULL
+		AND o.pdtid = #{pdtid}
+	</select>
+
+	<!-- public ArrayList<ProductDTO> selectProductOption(Criteria criteria); -->
+	<select id="selectProductOption" resultType="kr.ohora.sl.domain.ProductDTO">
+		SELECT pdtid,
+		catid,
+		scatid,
+		pdtnumber,
+		pdtname,
+		pdtamount,
+		pdtdiscountrate,
+		pdtimgurl,
+		pdtcount,
+		pdtreviewcount,
+		pdtsalescount,
+		pdtadddate,
+		pdtviewcount,
+		CASE
+		WHEN pdtdiscountrate != 0 THEN pdtamount - CAST(pdtamount *
+		pdtdiscountrate / 100 AS INT)
+		ELSE pdtamount
+		END AS pdtdiscountamount,
+		pdtDescription
+		FROM oproduct
+		<where>
+			<choose>
+				<when test="catid == 1">
+					pdtid BETWEEN 172 AND 175
+				</when>
+				<when test="catid == 2">
+					pdtid BETWEEN 169 AND 171
+				</when>
+			</choose>
+		</where>
+	</select>
+
+	<!-- public ArrayList<ProductDTO> selectProductsBySearch( Criteria criteria ); -->
+	<select id="selectProductsBySearch"	resultType="kr.ohora.sl.domain.ProductDTO">
+		SELECT		pdtid,
+					catid,
+					scatid,
+					pdtnumber,
+					pdtname,
+					pdtamount,
+					pdtdiscountrate,
+					pdtimgurl,
+					pdtcount,
+					pdtreviewcount,
+					pdtsalescount,
+					pdtadddate,
+					pdtviewcount,
+					CASE
+					WHEN pdtdiscountrate != 0 THEN pdtamount - CAST(pdtamount *
+					pdtdiscountrate / 100 AS INT)
+					ELSE pdtamount
+					END AS pdtdiscountamount
+					FROM OPRODUCT
+		WHERE REGEXP_LIKE(pdtname, #{keyword}, 'i')
+	</select>
+	
+	<!-- public Integer selectTotalRecordsBySearch( Criteria criteria , String keyword ); -->
+	<select id="selectTotalRecordsBySearch" resultType="Integer">
+		SELECT COUNT(*)
+		FROM OPRODUCT
+		WHERE REGEXP_LIKE(pdtname, #{keyword}, 'i')
+	</select>
+</mapper>

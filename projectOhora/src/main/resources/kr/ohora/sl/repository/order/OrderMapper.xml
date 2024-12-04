@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+ 
+ <mapper namespace="kr.ohora.sl.repository.order.OrderMapper">
+ 
+ 	<select id="selectUserInfo" resultType="kr.ohora.sl.domain.UserDTO">
+ 	SELECT * FROM ouser WHERE userid = #{userPk}
+ 	</select>
+ 	
+ 	<select id="selectAddrList" resultType="kr.ohora.sl.domain.AddrDTO">
+ 	SELECT * FROM oaddress where userid = #{userPk}
+ 	</select>
+ 	
+ 	<select id="selectCouponList" resultType="kr.ohora.sl.domain.CouponDTO">
+ 	SELECT * FROM oissuedcoupon i JOIN ocoupon c ON i.cpnid = c.cpnid where userid = #{userPk} AND icpnisused = 'N'
+ 	</select>
+ 	
+ 	<!-- ArrayList<ProductDTO> selectProductList(String[] pdtidArr) throws SQLException; -->
+ 	<select id="selectProductList" resultType="kr.ohora.sl.domain.ProductDTO">
+ 	SELECT pdtid, pdtname, pdtamount, pdtdiscountrate, pdtimgurl
+	FROM OPRODUCT
+	<where>
+	<!-- 
+		<foreach item="pdtidArr" index="index" collection="array"
+		 open="pdtid IN (" separator="," close=")" >
+		 #{pdtidArr}
+		</foreach>
+		 -->
+		<foreach item="pdtId" index="index" collection="pdtidArr"
+		 open="pdtid IN (" separator="," close=")" >
+		 #{pdtId}
+		</foreach>
+		 
+	</where>
+ 	</select>
+ 	
+ 	<insert id="insertOrder" parameterType="kr.ohora.sl.domain.OrderPageDTO">
+ 	<selectKey order="BEFORE" resultType="Long" keyProperty="ordPk">
+	  SELECT O_ORDER_SEQ.NEXTVAL
+	  FROM dual
+	</selectKey>
+ 	INSERT INTO OORDER (ORDPK, ORDID, USERID, ICPNID, ORDNAME, ORDADDRESS, ORDZIPCODE, ORDTEL, ORDEMAIL, 
+				ORDORDERDATE, ORDTOTALAMOUNT, ORDCPNDISCOUNT 
+				, ORDPDTDISCOUNT,ORDUSEPOINT,ORDPAYOPTION,ORDDELIVERYFEE) 
+				VALUES(#{ordPk}, TO_CHAR(SYSDATE, 'YYYYMMDD') || '-' || LPAD(#{ordPk}, 7, '0') 
+				, #{userPk}, #{icpnId}, #{rname}, #{addr}, #{rzipcode1}, #{phone}, #{email}, SYSDATE
+				, #{totalSum}, #{icpnDc}, #{discountSum}, #{inputPoint}, #{paymethod}, #{deliveryfee})
+ 	</insert>
+ 	
+ 	<update id="updateUsePoint">
+ 	UPDATE ouser SET userpoint = #{point} WHERE userid = #{userPk}
+ 	</update>
+ 	
+ 	<select id="checkPoint" resultType="Integer">
+ 	SELECT userpoint FROM ouser WHERE userid = #{userPk}
+ 	</select>
+ 	
+ 	<update id="updateCoupon">
+ 	UPDATE oissuedcoupon SET icpnisused = 'Y' WHERE userid = #{userPk} AND icpnid = #{icpnId} 
+ 	</update>
+ 	
+ 	<insert id="insertOrdDetail">
+ 	INSERT INTO OORDDETAIL (OPDTID, ORDPK, OPDTNAME, OPDTAMOUNT, OPDTDCAMOUNT, OPDTOPNAME, OPDTOPAMOUNT
+				, OPDTCOUNT, OPDTSTATE, OPDTREFUND, OPDTDELCOMPANY, OPDTDELNUMBER, OPDTCONFIRM)
+				VALUES (O_ORDDETAIL_SEQ.NEXTVAL, #{ordPk}, #{pdtName}, #{pdtAmount}, #{pdtDcAmount}
+				, NULL, NULL, #{pdtCount}, '상품준비중', NULL, NULL, NULL, 'N')
+ 	</insert>
+ 	
+ 	<select id="selectOrdId" resultType="String">
+ 	SELECT ORDID FROM OORDER WHERE ORDPK = #{ordPk}
+ 	</select>
+ 	
+ 	<update id="updatePdtCount">
+ 	update oproduct
+	SET pdtcount = pdtcount - #{pdtCount}
+	WHERE pdtid = #{pdtId}
+ 	</update>
+ 	
+ 	<delete id="deleteCart">
+ 	DELETE FROM ocartlist 
+	WHERE userid = #{userPk} AND
+ 	<foreach item="pdtIdArr" index="index" collection="list"
+		 open=" pdtid IN (" separator="," close=")" >
+		 #{pdtIdArr}
+	</foreach>
+ 	</delete>
+
+ </mapper>
